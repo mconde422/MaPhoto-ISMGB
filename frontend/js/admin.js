@@ -3,7 +3,7 @@
    ⚠️ Remplacer API_URL par l'URL Railway après déploiement
 ═══════════════════════════════════════════════════════ */
 
-const API_URL = 'https://your-railway-app.up.railway.app'; // ← À remplacer
+const API_URL = 'lucid-success-production-2045.up.railway.app'; // ← À remplacer
 
 // ─── ÉTAT GLOBAL ───────────────────────────────────────
 let selectedAlbumId   = null;
