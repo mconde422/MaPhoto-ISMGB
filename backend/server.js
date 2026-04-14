@@ -4,16 +4,29 @@ const cors = require('cors');
 const app = express();
 
 // CORS — autoriser le frontend Netlify
+// app.use(cors({
+//   origin: function (origin, callback) {
+//     const allowed = [
+//       process.env.FRONTEND_URL,
+//       'http://localhost:5500',
+//       'http://127.0.0.1:5500',
+//       'http://localhost:3000',
+//       'http://127.0.0.1:3000',
+//       'https://mconde422.github.io'
+//     ].filter(Boolean);
+
+
 app.use(cors({
-  origin: function (origin, callback) {
-    const allowed = [
-      process.env.FRONTEND_URL,
-      'http://localhost:5500',
-      'http://127.0.0.1:5500',
-      'http://localhost:3000',
-      'http://127.0.0.1:3000',
-      
-    ].filter(Boolean);
+  origin: [
+    process.env.FRONTEND_URL,
+    'https://mconde422.github.io',
+    'http://localhost:5500'
+  ],
+  methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'x-admin-password']
+}));
+
+app.options('*', cors());
 
     // Autoriser les requêtes sans origin (ex: Postman, mobile apps)
     if (!origin) return callback(null, true);
