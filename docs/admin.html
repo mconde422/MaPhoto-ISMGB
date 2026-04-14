@@ -274,6 +274,57 @@
   </div>
 
   <!-- ═══════════════════════════════════════════════════
+       MODAL RENOMMER ALBUM
+  ═══════════════════════════════════════════════════ -->
+  <div id="modal-rename-album" class="modal-overlay hidden" onclick="closeModalOutside(event, 'modal-rename-album')">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Renommer l'album</h3>
+        <button type="button" class="btn-icon" onclick="closeModal('modal-rename-album')">&times;</button>
+      </div>
+      <form id="form-rename-album" onsubmit="submitRenameAlbum(event)" novalidate>
+        <input type="hidden" id="rename-album-id" />
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="rename-album-nom">Nouveau nom *</label>
+            <input type="text" id="rename-album-nom" placeholder="Nouveau nom de l'album" required minlength="2" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('modal-rename-album')">Annuler</button>
+          <button type="submit" class="btn btn-primary" id="btn-submit-rename">Renommer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       MODAL CRÉER SOUS-ALBUM
+  ═══════════════════════════════════════════════════ -->
+  <div id="modal-create-subalbum" class="modal-overlay hidden" onclick="closeModalOutside(event, 'modal-create-subalbum')">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Créer un sous-album</h3>
+        <button type="button" class="btn-icon" onclick="closeModal('modal-create-subalbum')">&times;</button>
+      </div>
+      <form id="form-create-subalbum" onsubmit="submitCreateSubalbum(event)" novalidate>
+        <input type="hidden" id="subalbum-parent-id" />
+        <div class="modal-body">
+          <p style="font-size: 0.9rem; color: #666; margin-bottom: 1rem;">Sous-album de <strong id="subalbum-parent-name">—</strong></p>
+          <div class="form-group">
+            <label for="subalbum-nom">Nom du sous-album *</label>
+            <input type="text" id="subalbum-nom" placeholder="Ex: Receptions, Remises diplômes, etc." required minlength="2" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('modal-create-subalbum')">Annuler</button>
+          <button type="submit" class="btn btn-primary" id="btn-submit-subalbum">Créer le sous-album</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
        TOAST
   ═══════════════════════════════════════════════════ -->
   <div id="toast" class="toast hidden"></div>

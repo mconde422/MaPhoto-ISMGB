@@ -133,16 +133,51 @@ function renderAlbumsList(albums) {
     return;
   }
 
-  listEl.innerHTML = albums.map(a => `
-    <div
-      class="album-item${selectedAlbumId === a.id ? ' active' : ''}"
-      onclick="selectAlbum('${a.id}')"
-      data-id="${a.id}"
-    >
-      <div class="album-item-name">${escHtml(a.nom)}</div>
-      <div class="album-item-meta">${a.nb_images} photo${a.nb_images !== 1 ? 's' : ''} · ${a.nb_visites} visiteur${a.nb_visites !== 1 ? 's' : ''}</div>
-    </div>
-  `).join('');
+  // Fonction récursive pour rendre la hiérarchie
+  function renderHierarchy(items, level = 0) {
+    return items.map(a => `
+      <div class="album-item${selectedAlbumId === a.id ? ' active' : ''}" data-id="${a.id}" style="margin-left: ${level * 16}px">
+        <div class="album-item-header" onclick="selectAlbum('${a.id}')">
+          ${a.children && a.children.length > 0 ? `
+            <button type="button" class="album-toggle" onclick="toggleAlbumChildren(this, '${a.id}')" title="Afficher/Masquer sous-albums">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="transform: rotate(-90deg); transition: transform 0.2s">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+          ` : '<span style="display:inline-block;width:14px"></span>'}
+          <span class="album-item-name">${escHtml(a.nom)}</span>
+          ${a.children && a.children.length > 0 ? `<span class="album-children-count" style="opacity:0.6;font-size:0.75rem">(${a.children.length})</span>` : ''}
+        </div>
+        <div class="album-item-meta">${a.nb_images} photo${a.nb_images !== 1 ? 's' : ''} · ${a.nb_visites} visiteur${a.nb_visites !== 1 ? 's' : ''}</div>
+        <div class="album-item-actions">
+          <button type="button" class="album-action-btn" onclick="openRenameModal('${a.id}', '${escHtml(a.nom)}')" title="Renommer">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button type="button" class="album-action-btn" onclick="openSubalbumModal('${a.id}', '${escHtml(a.nom)}')" title="Créer sous-album">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+          <button type="button" class="album-action-btn album-action-delete" onclick="confirmDeleteAlbum('${a.id}', '${escHtml(a.nom)}')" title="Supprimer">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+          </button>
+        </div>
+        ${a.children && a.children.length > 0 ? `<div class="album-children" id="children-${a.id}">${renderHierarchy(a.children, level + 1)}</div>` : ''}
+      </div>
+    `).join('');
+  }
+
+  listEl.innerHTML = renderHierarchy(albums);
+}
+
+function toggleAlbumChildren(btn, albumId) {
+  const childrenDiv = document.getElementById(`children-${albumId}`);
+  if (!childrenDiv) return;
+  
+  childrenDiv.style.display = childrenDiv.style.display === 'none' ? 'block' : 'none';
+  
+  const svg = btn.querySelector('svg');
+  if (svg) {
+    svg.style.transform = childrenDiv.style.display === 'none' ? 'rotate(-90deg)' : 'rotate(0deg)';
+  }
 }
 
 // ─── SÉLECTIONNER UN ALBUM ─────────────────────────────
@@ -274,12 +309,103 @@ async function submitCreateAlbum(e) {
   }
 }
 
+// ─── RENOMMER UN ALBUM ─────────────────────────────────
+function openRenameModal(albumId, currentNom) {
+  document.getElementById('rename-album-id').value = albumId;
+  document.getElementById('rename-album-nom').value = currentNom;
+  document.getElementById('rename-album-nom').focus();
+  document.getElementById('rename-album-nom').select();
+  openModal('modal-rename-album');
+}
+
+async function submitRenameAlbum(e) {
+  e.preventDefault();
+  const albumId = document.getElementById('rename-album-id').value;
+  const nom = document.getElementById('rename-album-nom').value.trim();
+
+  if (nom.length < 2) {
+    showToast("Le nom doit avoir au minimum 2 caractères", true);
+    return;
+  }
+
+  const btn = document.getElementById('btn-submit-rename');
+  btn.disabled = true;
+  btn.textContent = 'Renommage…';
+
+  try {
+    const res = await fetch(`${API_URL}/api/albums/${albumId}`, {
+      method: 'PUT',
+      headers: adminHeaders(),
+      body: JSON.stringify({ nom })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Erreur renommage');
+    }
+
+    closeModal('modal-rename-album');
+    showToast(`Album renommé en "${nom}"`);
+    await loadAlbums();
+  } catch (err) {
+    showToast(err.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Renommer';
+  }
+}
+
+// ─── CRÉER UN SOUS-ALBUM ──────────────────────────────
+function openSubalbumModal(parentAlbumId, parentNom) {
+  document.getElementById('subalbum-parent-id').value = parentAlbumId;
+  document.getElementById('subalbum-parent-name').textContent = parentNom;
+  document.getElementById('subalbum-nom').value = '';
+  document.getElementById('subalbum-nom').focus();
+  openModal('modal-create-subalbum');
+}
+
+async function submitCreateSubalbum(e) {
+  e.preventDefault();
+  const parentId = document.getElementById('subalbum-parent-id').value;
+  const nom = document.getElementById('subalbum-nom').value.trim();
+
+  if (nom.length < 2) {
+    showToast("Le nom du sous-album est requis (min 2 caractères)", true);
+    return;
+  }
+
+  const btn = document.getElementById('btn-submit-subalbum');
+  btn.disabled = true;
+  btn.textContent = 'Création…';
+
+  try {
+    const res = await fetch(`${API_URL}/api/albums/${parentId}/child`, {
+      method: 'POST',
+      headers: adminHeaders(),
+      body: JSON.stringify({ nom })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Erreur création sous-album');
+    }
+
+    closeModal('modal-create-subalbum');
+    document.getElementById('form-create-subalbum').reset();
+    showToast(`Sous-album "${nom}" créé !`);
+    await loadAlbums();
+  } catch (err) {
+    showToast(err.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Créer le sous-album';
+  }
+}
+
 // ─── SUPPRIMER UN ALBUM ────────────────────────────────
-function confirmDeleteAlbum() {
-  if (!selectedAlbumId || !selectedAlbumData) return;
-  const nom = selectedAlbumData.album.nom;
+function confirmDeleteAlbum(albumId, nom) {
   if (!confirm(`Supprimer définitivement l'album "${nom}" et toutes ses photos ? Cette action est irréversible.`)) return;
-  deleteAlbum(selectedAlbumId);
+  deleteAlbum(albumId);
 }
 
 async function deleteAlbum(id) {
@@ -302,6 +428,29 @@ async function deleteAlbum(id) {
     showToast('Erreur lors de la suppression', true);
   }
 }
+
+// ─── RENOMMER UN ALBUM ─────────────────────────────────
+function openRenameModal(albumId, currentNom) {
+  document.getElementById('rename-album-id').value = albumId;
+  document.getElementById('rename-album-nom').value = currentNom;
+  document.getElementById('rename-album-nom').focus();
+  document.getElementById('rename-album-nom').select();
+  openModal('modal-rename-album');
+}
+
+async function submitRenameAlbum(e) {
+  e.preventDefault();
+  const albumId = document.getElementById('rename-album-id').value;
+  const nom = document.getElementById('rename-album-nom').value.trim();
+
+  if (nom.length < 2) {
+    showToast("Le nom doit avoir au minimum 2 caractères", true);
+    return;
+  }
+
+  const btn = document.getElementById('btn-submit-rename');
+  btn.disabled = true;
+  btn.textContent = 'Renommage…';
 
 // ─── SUPPRIMER UNE IMAGE ───────────────────────────────
 function confirmDeleteImage(id, titre) {
