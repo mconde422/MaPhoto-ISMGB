@@ -28,14 +28,14 @@ app.use(cors({
 
 app.options('*', cors());
 
-    // Autoriser les requêtes sans origin (ex: Postman, mobile apps)
-    if (!origin) return callback(null, true);
-    if (allowed.includes(origin)) return callback(null, true);
-    return callback(new Error('Non autorisé par CORS'));
-  },
-  methods: ['GET', 'POST', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'x-admin-password']
-}));
+//     // Autoriser les requêtes sans origin (ex: Postman, mobile apps)
+//     if (!origin) return callback(null, true);
+//     if (allowed.includes(origin)) return callback(null, true);
+//     return callback(new Error('Non autorisé par CORS'));
+//   },
+//   methods: ['GET', 'POST', 'DELETE'],
+//   allowedHeaders: ['Content-Type', 'x-admin-password']
+// }));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
