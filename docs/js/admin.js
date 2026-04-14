@@ -3,7 +3,7 @@
    ⚠️ Remplacer API_URL par l'URL Render après déploiement
 ═══════════════════════════════════════════════════════ */
 
-const API_URL = 'https://your-app.onrender.com'; // ← À remplacer après déploiement Render
+const API_URL = 'https://maphoto-ismgb.onrender.com'; // ← À remplacer après déploiement Render
 
 // ─── ÉTAT GLOBAL ───────────────────────────────────────
 let selectedAlbumId   = null;
