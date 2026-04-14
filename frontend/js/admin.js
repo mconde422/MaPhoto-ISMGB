@@ -4,7 +4,7 @@
 ═══════════════════════════════════════════════════════ */
 
 // const API_URL = 'lucid-success-production-2045.up.railway.app'; // ← À remplacer
-const API_URL = "https://lucid-success-production-2045.up.railway.app/api";
+const API_URL = "https://lucid-success-production-2045.up.railway.app";
 
 // ─── ÉTAT GLOBAL ───────────────────────────────────────
 let selectedAlbumId   = null;
