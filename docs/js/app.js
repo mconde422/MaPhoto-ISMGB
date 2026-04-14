@@ -1,13 +1,13 @@
 /* ═══════════════════════════════════════════════════════
    MaPhoto-ISMGB — Portail Public (app.js)
-   ⚠️ Remplacer API_URL par l'URL Railway après déploiement
+   ⚠️ Remplacer API_URL par l'URL Render après déploiement
 ═══════════════════════════════════════════════════════ */
 
-const API_URL = 'https://your-railway-app.up.railway.app'; // ← À remplacer
+const API_URL = 'https://your-app.onrender.com'; // ← À remplacer après déploiement Render
 
 // État global
-let currentAlbum = null;
-let currentImages = [];
+let currentAlbum    = null;
+let currentImages   = [];
 let lightboxImageId = null;
 
 // ─── INIT ──────────────────────────────────────────────
@@ -26,10 +26,9 @@ async function init() {
   // Charger l'album pour afficher son nom dès l'identification
   try {
     const data = await fetchAlbum(slug);
-    currentAlbum = data.album;
+    currentAlbum  = data.album;
     currentImages = data.images;
 
-    // Mettre à jour le nom dans l'écran d'identification
     const el = document.getElementById('identify-album-name');
     if (el) el.textContent = currentAlbum.nom;
   } catch {
@@ -42,7 +41,7 @@ async function init() {
     showGallery();
   } else {
     showScreen('screen-identify');
-    setupIdentifyForm(slug);
+    setupIdentifyForm();
   }
 }
 
@@ -55,7 +54,7 @@ function getAlbumSlug() {
 // ─── USER (localStorage) ───────────────────────────────
 function checkUser() {
   try {
-    const raw = localStorage.getItem('sap_user');
+    const raw = localStorage.getItem('ismgb_user');
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
@@ -63,11 +62,11 @@ function checkUser() {
 }
 
 function saveUserLocally(prenom, nom) {
-  localStorage.setItem('sap_user', JSON.stringify({ prenom, nom }));
+  localStorage.setItem('ismgb_user', JSON.stringify({ prenom, nom }));
 }
 
 // ─── IDENTIFICATION FORM ───────────────────────────────
-function setupIdentifyForm(slug) {
+function setupIdentifyForm() {
   const form = document.getElementById('form-identify');
   if (!form) return;
 
@@ -81,7 +80,7 @@ function setupIdentifyForm(slug) {
 
     const prenom = prenomEl.value.trim();
     const nom    = nomEl.value.trim();
-    let valid = true;
+    let valid    = true;
 
     if (prenom.length < 2) {
       showFieldError('error-prenom', 'Prénom requis (min 2 caractères)');
@@ -95,14 +94,14 @@ function setupIdentifyForm(slug) {
     }
     if (!valid) return;
 
-    btn.disabled = true;
+    btn.disabled    = true;
     btn.textContent = 'Enregistrement…';
 
     try {
       await fetch(`${API_URL}/api/visites`, {
-        method: 'POST',
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prenom, nom, album_id: currentAlbum?.id })
+        body:    JSON.stringify({ prenom, nom, album_id: currentAlbum?.id })
       });
     } catch {
       // On continue même si l'enregistrement échoue
@@ -112,7 +111,6 @@ function setupIdentifyForm(slug) {
     showGallery();
   });
 
-  // Retirer la classe invalid sur input
   ['input-prenom', 'input-nom'].forEach(id => {
     document.getElementById(id)?.addEventListener('input', () => {
       document.getElementById(id).classList.remove('invalid');
@@ -122,7 +120,7 @@ function setupIdentifyForm(slug) {
 
 function clearErrors() {
   document.getElementById('error-prenom').textContent = '';
-  document.getElementById('error-nom').textContent = '';
+  document.getElementById('error-nom').textContent    = '';
   document.getElementById('input-prenom').classList.remove('invalid');
   document.getElementById('input-nom').classList.remove('invalid');
 }
@@ -143,12 +141,12 @@ async function fetchAlbum(slug) {
 function showGallery() {
   showScreen('screen-gallery');
 
-  const nameEl = document.getElementById('gallery-album-name');
-  const descEl = document.getElementById('gallery-album-desc');
+  const nameEl  = document.getElementById('gallery-album-name');
+  const descEl  = document.getElementById('gallery-album-desc');
   const countEl = document.getElementById('gallery-count');
 
-  if (nameEl) nameEl.textContent = currentAlbum.nom;
-  if (descEl) descEl.textContent = currentAlbum.description || '';
+  if (nameEl)  nameEl.textContent  = currentAlbum.nom;
+  if (descEl)  descEl.textContent  = currentAlbum.description || '';
   if (countEl) countEl.textContent =
     currentImages.length > 0
       ? `${currentImages.length} photo${currentImages.length > 1 ? 's' : ''}`
@@ -184,6 +182,7 @@ function renderGallery(images) {
       <div class="photo-card-footer">
         <span class="photo-card-title">${escHtml(img.titre || 'Photo')}</span>
         <button
+          type="button"
           class="btn-download-single"
           onclick="event.stopPropagation(); downloadImage('${img.id}', '${escHtml(img.titre || 'photo')}')"
           title="Télécharger"
@@ -199,7 +198,7 @@ function renderGallery(images) {
   `).join('');
 }
 
-// Génère une URL miniature Cloudinary (400px de large)
+// Miniature Cloudinary 400px
 function buildThumbnailUrl(url) {
   if (!url || !url.includes('cloudinary.com')) return url;
   return url.replace('/upload/', '/upload/w_400,q_auto,f_auto/');
@@ -221,11 +220,11 @@ async function downloadImage(imageId, titre) {
     const res = await fetch(`${API_URL}/api/images/${imageId}/download`);
     if (!res.ok) throw new Error('Erreur téléchargement');
 
-    const blob = await res.blob();
+    const blob     = await res.blob();
     const filename = (titre || 'photo').replace(/[^a-z0-9_\-]/gi, '_');
 
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
+    const a  = document.createElement('a');
+    a.href   = URL.createObjectURL(blob);
     a.download = filename;
     a.click();
     URL.revokeObjectURL(a.href);
@@ -251,18 +250,18 @@ async function downloadZip() {
 
     const ids = currentImages.map(img => img.id);
     const res = await fetch(`${API_URL}/api/images/download-zip`, {
-      method: 'POST',
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image_ids: ids })
+      body:    JSON.stringify({ image_ids: ids })
     });
 
     if (!res.ok) throw new Error('Erreur création ZIP');
 
-    const blob = await res.blob();
+    const blob      = await res.blob();
     const albumName = (currentAlbum?.nom || 'photos').replace(/[^a-z0-9_\-]/gi, '_');
 
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = URL.createObjectURL(blob);
     a.download = `photos-${albumName}.zip`;
     a.click();
     URL.revokeObjectURL(a.href);
@@ -272,7 +271,7 @@ async function downloadZip() {
     showToast('Erreur lors de la création du ZIP', true);
   } finally {
     if (btn) {
-      btn.disabled = false;
+      btn.disabled  = false;
       btn.innerHTML = `
         <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
@@ -291,15 +290,11 @@ function openLightbox(url, imageId, titre) {
   const img = document.getElementById('lightbox-img');
   const btn = document.getElementById('lightbox-download-btn');
 
-  // Afficher la version haute qualité
-  const hqUrl = url.replace('/upload/', '/upload/q_auto,f_auto/');
-  img.src = hqUrl;
+  img.src = url.replace('/upload/', '/upload/q_auto,f_auto/');
   img.alt = titre || 'Photo';
   lightboxImageId = imageId;
 
-  if (btn) {
-    btn.onclick = () => downloadImage(imageId, titre);
-  }
+  if (btn) btn.onclick = () => downloadImage(imageId, titre);
 
   lb.classList.remove('hidden');
   document.body.style.overflow = 'hidden';
@@ -316,7 +311,6 @@ function closeLightbox(e) {
   document.body.style.overflow = '';
 }
 
-// Fermer la lightbox avec Échap
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     const lb = document.getElementById('lightbox');
@@ -332,11 +326,9 @@ document.addEventListener('keydown', (e) => {
 // ─── SCREENS ───────────────────────────────────────────
 function showScreen(id) {
   ['screen-no-album', 'screen-identify', 'screen-gallery'].forEach(s => {
-    const el = document.getElementById(s);
-    if (el) el.classList.add('hidden');
+    document.getElementById(s)?.classList.add('hidden');
   });
-  const target = document.getElementById(id);
-  if (target) target.classList.remove('hidden');
+  document.getElementById(id)?.classList.remove('hidden');
 }
 
 // ─── TOAST ─────────────────────────────────────────────
@@ -347,7 +339,7 @@ function showToast(msg, isError = false) {
   if (!toast) return;
 
   toast.textContent = msg;
-  toast.className = `toast${isError ? ' toast-error' : ''}`;
+  toast.className   = `toast${isError ? ' toast-error' : ''}`;
   toast.classList.remove('hidden');
 
   if (toastTimer) clearTimeout(toastTimer);

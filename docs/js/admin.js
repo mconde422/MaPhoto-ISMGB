@@ -1,30 +1,29 @@
 /* ═══════════════════════════════════════════════════════
    MaPhoto-ISMGB — Panel Admin (admin.js)
-   ⚠️ Remplacer API_URL par l'URL Railway après déploiement
+   ⚠️ Remplacer API_URL par l'URL Render après déploiement
 ═══════════════════════════════════════════════════════ */
 
-// const API_URL = 'lucid-success-production-2045.up.railway.app'; // ← À remplacer
-const API_URL = "https://lucid-success-production-2045.up.railway.app";
+const API_URL = 'https://your-app.onrender.com'; // ← À remplacer après déploiement Render
 
 // ─── ÉTAT GLOBAL ───────────────────────────────────────
 let selectedAlbumId   = null;
 let selectedAlbumData = null;
-let currentQrData     = null;   // { qr_code_base64, url }
-let pendingFiles      = [];     // fichiers en attente d'upload
+let currentQrData     = null;
+let pendingFiles      = [];
 
 // ─── HELPERS ───────────────────────────────────────────
 const adminHeaders = () => ({
-  'x-admin-password': sessionStorage.getItem('sap_admin_pwd') || '',
+  'x-admin-password': sessionStorage.getItem('ismgb_admin_pwd') || '',
   'Content-Type': 'application/json'
 });
 
 function escHtml(str) {
   return String(str || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+    .replace(/&/g,  '&amp;')
+    .replace(/</g,  '&lt;')
+    .replace(/>/g,  '&gt;')
+    .replace(/"/g,  '&quot;')
+    .replace(/'/g,  '&#39;');
 }
 
 function formatDate(iso) {
@@ -44,14 +43,12 @@ function formatDateTime(iso) {
 
 function formatSize(kb) {
   if (!kb) return '';
-  if (kb < 1024) return `${kb} Ko`;
-  return `${(kb / 1024).toFixed(1)} Mo`;
+  return kb < 1024 ? `${kb} Ko` : `${(kb / 1024).toFixed(1)} Mo`;
 }
 
 // ─── INIT ──────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  // Vérifier si déjà connecté dans la session
-  const pwd = sessionStorage.getItem('sap_admin_pwd');
+  const pwd = sessionStorage.getItem('ismgb_admin_pwd');
   if (pwd) {
     showApp();
     loadAlbums();
@@ -59,34 +56,24 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('screen-login').classList.remove('hidden');
   }
 
-  // Formulaire de connexion
-  const formLogin = document.getElementById('form-login');
-  if (formLogin) {
-    formLogin.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const pwdInput = document.getElementById('input-password');
-      await login(pwdInput.value.trim());
-    });
-  }
+  document.getElementById('form-login')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await login(document.getElementById('input-password').value.trim());
+  });
 });
 
 // ─── LOGIN ──────────────────────────────────────────────
 async function login(password) {
-  const btn = document.getElementById('btn-login');
+  const btn   = document.getElementById('btn-login');
   const errEl = document.getElementById('login-error');
 
   if (!password) return;
 
-  btn.disabled = true;
+  btn.disabled    = true;
   btn.textContent = 'Connexion…';
   errEl.classList.add('hidden');
 
   try {
-    const res = await fetch(`${API_URL}/api/health`, {
-      headers: { 'x-admin-password': password }
-    });
-
-    // Tester que le mot de passe fonctionne avec les albums
     const testRes = await fetch(`${API_URL}/api/albums`, {
       headers: { 'x-admin-password': password, 'Content-Type': 'application/json' }
     });
@@ -96,20 +83,20 @@ async function login(password) {
       return;
     }
 
-    sessionStorage.setItem('sap_admin_pwd', password);
+    sessionStorage.setItem('ismgb_admin_pwd', password);
     showApp();
     await loadAlbums();
   } catch {
     errEl.textContent = 'Impossible de joindre le serveur. Réessayez.';
     errEl.classList.remove('hidden');
   } finally {
-    btn.disabled = false;
+    btn.disabled    = false;
     btn.textContent = 'Se connecter';
   }
 }
 
 function logout() {
-  sessionStorage.removeItem('sap_admin_pwd');
+  sessionStorage.removeItem('ismgb_admin_pwd');
   document.getElementById('app').classList.add('hidden');
   document.getElementById('screen-login').classList.remove('hidden');
   document.getElementById('input-password').value = '';
@@ -131,9 +118,8 @@ async function loadAlbums() {
       if (res.status === 401) { logout(); return; }
       throw new Error('Erreur chargement albums');
     }
-    const albums = await res.json();
-    renderAlbumsList(albums);
-  } catch (err) {
+    renderAlbumsList(await res.json());
+  } catch {
     listEl.innerHTML = `<p style="color:rgba(255,255,255,0.5);font-size:0.8rem;padding:0.5rem">Erreur de chargement</p>`;
     showToast('Erreur lors du chargement des albums', true);
   }
@@ -163,43 +149,32 @@ function renderAlbumsList(albums) {
 async function selectAlbum(id) {
   selectedAlbumId = id;
 
-  // Mettre à jour la sidebar
   document.querySelectorAll('.album-item').forEach(el => {
     el.classList.toggle('active', el.dataset.id === id);
   });
 
-  // Afficher le panneau album
   document.getElementById('content-empty').classList.add('hidden');
   document.getElementById('content-album').classList.remove('hidden');
 
-  // Charger les données de l'album
   try {
     const res = await fetch(`${API_URL}/api/albums/${id}`, { headers: adminHeaders() });
     if (!res.ok) throw new Error();
     const data = await res.json();
     selectedAlbumData = data;
 
-    // En-tête
     document.getElementById('album-title').textContent = data.album.nom;
     document.getElementById('album-meta').textContent =
       data.album.description
         ? `${data.album.description}${data.album.date_evenement ? ' · ' + formatDate(data.album.date_evenement) : ''}`
         : (data.album.date_evenement ? formatDate(data.album.date_evenement) : '');
 
-    // Compteurs tabs
     document.getElementById('tab-count-images').textContent = data.images.length;
 
-    // Afficher les images
     renderAdminGallery(data.images);
-
-    // Charger les stats
     await loadStats(id);
-
-    // Revenir sur l'onglet images
     switchTab('images');
-
   } catch {
-    showToast('Erreur lors du chargement de l\'album', true);
+    showToast("Erreur lors du chargement de l'album", true);
   }
 }
 
@@ -210,7 +185,7 @@ function switchTab(name) {
   });
   document.querySelectorAll('.tab-content').forEach(c => {
     c.classList.toggle('active', c.id === `tab-${name}`);
-    c.classList.toggle('hidden', c.id !== `tab-${name}`);
+    c.classList.toggle('hidden',  c.id !== `tab-${name}`);
   });
 }
 
@@ -241,6 +216,7 @@ function renderAdminGallery(images) {
           ${img.taille_kb ? `<span style="opacity:.6"> · ${formatSize(img.taille_kb)}</span>` : ''}
         </span>
         <button
+          type="button"
           class="admin-photo-delete"
           onclick="confirmDeleteImage('${img.id}', '${escHtml(img.titre || 'cette photo')}')"
           title="Supprimer"
@@ -266,19 +242,19 @@ async function submitCreateAlbum(e) {
   const date = document.getElementById('album-date').value;
 
   if (nom.length < 2) {
-    showToast('Le nom de l\'album est requis (min 2 caractères)', true);
+    showToast("Le nom de l'album est requis (min 2 caractères)", true);
     return;
   }
 
-  const btn = document.getElementById('btn-submit-album');
-  btn.disabled = true;
+  const btn       = document.getElementById('btn-submit-album');
+  btn.disabled    = true;
   btn.textContent = 'Création…';
 
   try {
     const res = await fetch(`${API_URL}/api/albums`, {
-      method: 'POST',
+      method:  'POST',
       headers: adminHeaders(),
-      body: JSON.stringify({ nom, description: desc || null, date_evenement: date || null })
+      body:    JSON.stringify({ nom, description: desc || null, date_evenement: date || null })
     });
 
     if (!res.ok) {
@@ -293,8 +269,8 @@ async function submitCreateAlbum(e) {
   } catch (err) {
     showToast(err.message, true);
   } finally {
-    btn.disabled = false;
-    btn.textContent = 'Créer l\'album';
+    btn.disabled    = false;
+    btn.textContent = "Créer l'album";
   }
 }
 
@@ -309,12 +285,12 @@ function confirmDeleteAlbum() {
 async function deleteAlbum(id) {
   try {
     const res = await fetch(`${API_URL}/api/albums/${id}`, {
-      method: 'DELETE',
+      method:  'DELETE',
       headers: adminHeaders()
     });
     if (!res.ok) throw new Error('Erreur suppression');
 
-    selectedAlbumId = null;
+    selectedAlbumId   = null;
     selectedAlbumData = null;
 
     document.getElementById('content-album').classList.add('hidden');
@@ -336,15 +312,13 @@ function confirmDeleteImage(id, titre) {
 async function deleteImage(id) {
   try {
     const res = await fetch(`${API_URL}/api/images/${id}`, {
-      method: 'DELETE',
+      method:  'DELETE',
       headers: adminHeaders()
     });
     if (!res.ok) throw new Error('Erreur suppression image');
 
-    // Retirer la card du DOM
     document.getElementById(`img-card-${id}`)?.remove();
 
-    // Mettre à jour le compteur
     if (selectedAlbumData) {
       selectedAlbumData.images = selectedAlbumData.images.filter(i => i.id !== id);
       document.getElementById('tab-count-images').textContent = selectedAlbumData.images.length;
@@ -354,7 +328,7 @@ async function deleteImage(id) {
     }
 
     showToast('Photo supprimée');
-    await loadAlbums(); // rafraîchir les compteurs sidebar
+    await loadAlbums();
   } catch {
     showToast('Erreur lors de la suppression', true);
   }
@@ -365,9 +339,9 @@ async function showQRCode() {
   if (!selectedAlbumId) return;
   openModal('modal-qrcode');
 
-  const qrImg   = document.getElementById('qr-img');
-  const qrUrl   = document.getElementById('qr-url');
-  const qrLoad  = document.getElementById('qr-loader');
+  const qrImg  = document.getElementById('qr-img');
+  const qrUrl  = document.getElementById('qr-url');
+  const qrLoad = document.getElementById('qr-loader');
 
   qrImg.classList.add('hidden');
   qrLoad.classList.remove('hidden');
@@ -395,8 +369,8 @@ async function showQRCode() {
 function downloadQRCode() {
   if (!currentQrData) return;
   const albumName = (selectedAlbumData?.album?.nom || 'album').replace(/[^a-z0-9_\-]/gi, '_');
-  const a = document.createElement('a');
-  a.href = currentQrData.qr_code_base64;
+  const a    = document.createElement('a');
+  a.href     = currentQrData.qr_code_base64;
   a.download = `qrcode-${albumName}.png`;
   a.click();
 }
@@ -409,14 +383,12 @@ function copyAlbumLink() {
 }
 
 // ─── UPLOAD ─────────────────────────────────────────────
-
-// Drag & drop
 function handleDragOver(e) {
   e.preventDefault();
   document.getElementById('drop-zone').classList.add('drag-over');
 }
 
-function handleDragLeave(e) {
+function handleDragLeave() {
   document.getElementById('drop-zone').classList.remove('drag-over');
 }
 
@@ -430,15 +402,12 @@ function handleDrop(e) {
 function handleFileSelect(e) {
   const files = Array.from(e.target.files);
   if (files.length > 0) addFilesToPreview(files);
-  e.target.value = ''; // Réinitialiser l'input
+  e.target.value = '';
 }
 
 function addFilesToPreview(files) {
-  // Filtrer les doublons par nom
   const existing = new Set(pendingFiles.map(f => f.name));
-  const newFiles = files.filter(f => !existing.has(f.name));
-
-  pendingFiles = [...pendingFiles, ...newFiles];
+  pendingFiles   = [...pendingFiles, ...files.filter(f => !existing.has(f.name))];
   renderPreviews();
 }
 
@@ -468,9 +437,8 @@ function renderPreviews() {
     </div>
   `).join('');
 
-  // Charger les miniatures avec FileReader
   pendingFiles.forEach((file, i) => {
-    const reader = new FileReader();
+    const reader  = new FileReader();
     reader.onload = (e) => {
       const img = document.getElementById(`preview-img-${i}`);
       if (img) img.src = e.target.result;
@@ -480,64 +448,57 @@ function renderPreviews() {
 }
 
 async function startUpload() {
-  if (!selectedAlbumId) {
-    showToast('Sélectionnez un album d\'abord', true);
-    return;
-  }
+  if (!selectedAlbumId) { showToast("Sélectionnez un album d'abord", true); return; }
   if (pendingFiles.length === 0) return;
 
-  const btn       = document.getElementById('btn-start-upload');
-  const statusEl  = document.getElementById('upload-status');
-  btn.disabled    = true;
+  const btn      = document.getElementById('btn-start-upload');
+  const statusEl = document.getElementById('upload-status');
+  btn.disabled   = true;
 
   const BATCH_SIZE = 5;
-  let uploaded    = 0;
-  let errors      = 0;
+  let uploaded = 0;
+  let errors   = 0;
 
-  // Uploader par batch de 5
   for (let i = 0; i < pendingFiles.length; i += BATCH_SIZE) {
-    const batch = pendingFiles.slice(i, i + BATCH_SIZE);
+    const batch        = pendingFiles.slice(i, i + BATCH_SIZE);
+    const batchIndices = batch.map((_, j) => i + j);
 
     const formData = new FormData();
     formData.append('album_id', selectedAlbumId);
     batch.forEach(file => formData.append('images', file));
 
-    // Simuler progression pendant l'upload
-    const batchIndices = batch.map((_, j) => i + j);
+    // Animer les barres pendant l'upload
     batchIndices.forEach(idx => {
       const bar = document.getElementById(`progress-${idx}`);
       if (bar) {
         let prog = 0;
-        const interval = setInterval(() => {
+        bar._interval = setInterval(() => {
           prog = Math.min(prog + 8, 85);
-          bar.style.width = prog + '%';
+          bar.style.width = `${prog}%`;
         }, 120);
-        bar._interval = interval;
       }
     });
 
     try {
       const res = await fetch(`${API_URL}/api/images/upload`, {
-        method: 'POST',
-        headers: { 'x-admin-password': sessionStorage.getItem('sap_admin_pwd') || '' },
-        body: formData
+        method:  'POST',
+        headers: { 'x-admin-password': sessionStorage.getItem('ismgb_admin_pwd') || '' },
+        body:    formData
       });
 
-      // Arrêter les barres de progression
       batchIndices.forEach(idx => {
         const bar = document.getElementById(`progress-${idx}`);
-        if (bar && bar._interval) clearInterval(bar._interval);
+        if (bar?._interval) clearInterval(bar._interval);
       });
 
-      if (!res.ok && res.status === 401) { logout(); return; }
+      if (res.status === 401) { logout(); return; }
 
       const data = await res.json();
-      uploaded += (data.uploaded || []).length;
-      errors   += (data.errors   || []).length;
+      uploaded  += (data.uploaded || []).length;
+      errors    += (data.errors   || []).length;
 
-      // Mettre à jour les statuts visuels
       (data.uploaded || []).forEach((_, j) => {
-        const idx = i + j;
+        const idx    = i + j;
         const bar    = document.getElementById(`progress-${idx}`);
         const status = document.getElementById(`status-${idx}`);
         if (bar)    bar.style.width = '100%';
@@ -545,7 +506,7 @@ async function startUpload() {
       });
 
       (data.errors || []).forEach((_, j) => {
-        const idx = i + (data.uploaded || []).length + j;
+        const idx    = i + (data.uploaded || []).length + j;
         const status = document.getElementById(`status-${idx}`);
         if (status) { status.textContent = '❌'; status.classList.add('visible'); }
       });
@@ -555,7 +516,7 @@ async function startUpload() {
       batchIndices.forEach(idx => {
         const bar    = document.getElementById(`progress-${idx}`);
         const status = document.getElementById(`status-${idx}`);
-        if (bar && bar._interval) clearInterval(bar._interval);
+        if (bar?._interval) clearInterval(bar._interval);
         if (status) { status.textContent = '❌'; status.classList.add('visible'); }
       });
     }
@@ -563,16 +524,10 @@ async function startUpload() {
     statusEl.textContent = `${uploaded} uploadée${uploaded > 1 ? 's' : ''}${errors > 0 ? `, ${errors} erreur${errors > 1 ? 's' : ''}` : ''}`;
   }
 
-  // Résumé final
   if (uploaded > 0) {
     showToast(`${uploaded} photo${uploaded > 1 ? 's' : ''} uploadée${uploaded > 1 ? 's' : ''} avec succès`);
-
-    // Rafraîchir la galerie et les compteurs
     await selectAlbum(selectedAlbumId);
-    setTimeout(() => {
-      clearPreviews();
-      switchTab('images');
-    }, 1500);
+    setTimeout(() => { clearPreviews(); switchTab('images'); }, 1500);
   } else {
     showToast('Aucune photo uploadée', true);
   }
@@ -582,7 +537,7 @@ async function startUpload() {
 
 function clearPreviews() {
   pendingFiles = [];
-  document.getElementById('preview-list').innerHTML = '';
+  document.getElementById('preview-list').innerHTML  = '';
   document.getElementById('upload-actions').classList.add('hidden');
   document.getElementById('upload-status').textContent = '';
 }
@@ -600,9 +555,8 @@ async function loadStats(albumId) {
   tableEl.classList.add('hidden');
   emptyEl.classList.add('hidden');
 
-  // Stats images (depuis les données déjà chargées)
-  if (selectedAlbumData) {
-    if (statImgEl) statImgEl.textContent = selectedAlbumData.images.length;
+  if (selectedAlbumData && statImgEl) {
+    statImgEl.textContent = selectedAlbumData.images.length;
   }
 
   try {
@@ -613,7 +567,6 @@ async function loadStats(albumId) {
     const data = await res.json();
 
     loaderEl.classList.add('hidden');
-
     if (statVisEl) statVisEl.textContent = data.total;
     document.getElementById('tab-count-visitors').textContent = data.total;
 
@@ -639,19 +592,13 @@ async function loadStats(albumId) {
 }
 
 // ─── MODALS ─────────────────────────────────────────────
-function openModal(id) {
-  document.getElementById(id)?.classList.remove('hidden');
-}
-
-function closeModal(id) {
-  document.getElementById(id)?.classList.add('hidden');
-}
+function openModal(id)  { document.getElementById(id)?.classList.remove('hidden'); }
+function closeModal(id) { document.getElementById(id)?.classList.add('hidden'); }
 
 function closeModalOutside(e, id) {
   if (e.target === document.getElementById(id)) closeModal(id);
 }
 
-// Fermer les modals avec Échap
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     document.querySelectorAll('.modal-overlay:not(.hidden)').forEach(m => {
@@ -668,7 +615,7 @@ function showToast(msg, isError = false) {
   if (!toast) return;
 
   toast.textContent = msg;
-  toast.className = `toast${isError ? ' toast-error' : ''}`;
+  toast.className   = `toast${isError ? ' toast-error' : ''}`;
   toast.classList.remove('hidden');
 
   if (toastTimer) clearTimeout(toastTimer);
