@@ -1,7 +1,7 @@
 {
   "name": "image-portal-backend",
   "version": "1.0.0",
-  "description": "Backend API pour le portail images SAP/NMC — MaPhoto-ISMGB",
+  "description": "Backend API pour MaPhoto-ISMGB — Portail de partage de photos événementielles",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

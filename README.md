@@ -1,6 +1,6 @@
 # MaPhoto-ISMGB
 
-> Portail de partage de photos événementielles pour l'ISMGB — pôle SAP/NMC  
+> Portail de partage de photos événementielles pour l'ISMGB
 > Accès public via QR code · Panel admin sécurisé · Stockage cloud · Téléchargement ZIP
 
 ---
@@ -29,7 +29,7 @@
 
 ## 1. Vue d'ensemble
 
-**MaPhoto-ISMGB** est une application web full-stack conçue pour permettre aux communicants SAP/NMC de l'ISMGB de publier et distribuer des photos d'événements (cérémonies, remises de diplômes, journées portes ouvertes, etc.) à leurs participants, sans nécessiter de compte utilisateur ni d'application mobile.
+**MaPhoto-ISMGB** est une application web full-stack conçue pour permettre aux communicants de l'ISMGB de publier et distribuer des photos d'événements (cérémonies, remises de diplômes, journées portes ouvertes, etc.) à leurs participants, sans nécessiter de compte utilisateur ni d'application mobile.
 
 ### Principe de fonctionnement
 
@@ -1103,6 +1103,7 @@ const API_URL = 'https://votre-app.up.railway.app';
 
 ---
 
-*MaPhoto-ISMGB — Développé pour le pôle SAP/NMC de l'ISMGB*
-#   M a P h o t o - I S M G B  
+*MaPhoto-ISMGB — Portail photos pour l'ISMGB*
+#   M a P h o t o - I S M G B 
+ 
  
